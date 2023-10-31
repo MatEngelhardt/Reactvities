@@ -1,6 +1,9 @@
-import axios, { AxiosResponse } from "axios";
+import axios, { AxiosError, AxiosResponse } from "axios";
 import Activity from "../../models/activity";
-import { act } from "react-dom/test-utils";
+import { toast } from "react-toastify";
+import { store } from "../stores/stores";
+import { router } from "../router/Routes";
+
 
 axios.defaults.baseURL = "http://localhost:5000/api";
 
@@ -13,13 +16,46 @@ const sleep = (delay: number) => {
 }
 
 axios.interceptors.response.use(async response => {
-    try {
-        await sleep(1000);
-        return response;
-    } catch (error) {
-        console.log(error);
-        return await Promise.reject(error);
+    await sleep(1000);
+    return response;
+}, (error: AxiosError) => {
+
+    const { data, status, config } = error.response as AxiosResponse;
+
+    switch (status) {
+        case 400:
+
+            if (config.method === "get" &&  Object.prototype.hasOwnProperty.call(data.errors, "id")) { 
+                router.navigate("/not-found");
+            }
+
+            if (data.errors) {
+                const popErros = [];
+                for (const key in data.errors) {
+                    popErros.push(data.errors[key]);
+                }
+
+                throw popErros.flat();
+            }
+            else {
+                toast.error(data);
+            }
+            break;
+        case 401:
+            toast.error("unauthorized");
+            break;
+        case 403:
+            toast.error("forbidden");
+            break;
+        case 404:
+            toast.error("not found");
+            break;
+        case 500:
+            store.commonStore.setServerError(data);
+            router.navigate("/server-error")
+            break;
     }
+    return Promise.reject(error);
 });
 
 const requests = {
@@ -31,10 +67,10 @@ const requests = {
 
 const Activities = {
     list: () => requests.get<Activity[]>(('/activities')),
-    details: (id:string) => requests.get<Activity>(`/activities/${id}`),
-    create: (activity:Activity) => requests.post('/activities', activity),
-    update: (activity:Activity) => requests.put(`/activities/${activity.id}`,activity),
-    delete: (id:string) => requests.delete(`/activities/${id}`)
+    details: (id: string) => requests.get<Activity>(`/activities/${id}`),
+    create: (activity: Activity) => requests.post('/activities', activity),
+    update: (activity: Activity) => requests.put(`/activities/${activity.id}`, activity),
+    delete: (id: string) => requests.delete(`/activities/${id}`)
 }
 
 export const Agent = {
