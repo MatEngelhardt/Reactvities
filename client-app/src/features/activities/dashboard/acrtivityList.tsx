@@ -4,7 +4,6 @@ import { useStore } from "../../../app/stores/stores";
 import { observer } from "mobx-react-lite";
 import ActivityListItem from "./activityListItem";
 
-
 export default observer(function ActivityList() {
 
 
